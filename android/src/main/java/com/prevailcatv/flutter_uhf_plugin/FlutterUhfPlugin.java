@@ -9,6 +9,8 @@ import io.flutter.plugin.common.PluginRegistry.Registrar;
 import android.text.TextUtils;
 
 import com.rscja.deviceapi.RFIDWithUHF;
+import com.rscja.deviceapi.RFIDWithUHF.BankEnum;
+import com.rscja.deviceapi.entity.SimpleRFIDEntity;
 
 /** FlutterUhfPlugin */
 public class FlutterUhfPlugin implements MethodCallHandler {
@@ -26,9 +28,21 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     } else if (call.method.equals("initUHF")) {
       result.success(initUFH());
     }  else if (call.method.equals("freeUHF")) {
-      result.sucess(freeUHF());
+      result.success(freeUHF());
     } else if (call.method.equals("readSignleTag")) {
       result.success(readSingleTag());
+    } else if (call.method.equals("readData")) {
+      String accessPwd = call.argument("accessPwd");
+      String bank = call.argument("bank");
+      String ptr = call.argument("ptr");
+      String cnt = call.argument("cnt");
+      result.success(readData(accessPwd, bank, ptr, cnt));
+    } else if (call.method.equals("readDataWithQT")) {
+      String accessPwd = call.argument("accessPwd");
+      String bank = call.argument("bank");
+      String ptr = call.argument("ptr");
+      String cnt = call.argument("cnt");
+      result.success(readDataWithQT(accessPwd, bank, ptr, cnt));
     }
     else {
       result.notImplemented();
@@ -62,6 +76,32 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     if (!TextUtils.isEmpty(strUII)) {
       String strEPC = mReader.convertUiiToEPC(strUII);
       return strEPC;
+    } else {
+      return "";
+    }
+  }
+
+  private String readData(String accessPwd, String bank, String ptr, String cnt) {
+    SimpleRFIDEntity entity = mReader.readData(accessPwd,
+            BankEnum.valueOf(bank),
+            Integer.parseInt(ptr),
+            Integer.parseInt(cnt));
+
+    if (entity != null) {
+      return entity.getData();
+    } else {
+      return "";
+    }
+  }
+
+  private String readDataWithQT(String accessPwd, String bank, String ptr, String cnt) {
+    SimpleRFIDEntity entity = mReader.readDataWithQT(accessPwd,
+            BankEnum.valueOf(bank),
+            Integer.parseInt(ptr),
+            Integer.parseInt(cnt));
+
+    if (entity != null) {
+      return entity.getData();
     } else {
       return "";
     }

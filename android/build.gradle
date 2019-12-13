@@ -31,12 +31,27 @@ android {
     defaultConfig {
         minSdkVersion 16
         testInstrumentationRunner "android.support.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters 'armeabi-v7a'
+        }
     }
     lintOptions {
         disable 'InvalidPackage'
     }
+    buildTypes {
+        release {
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        }
+        debug {
+            ndk {
+                abiFilters 'armeabi-v7a'
+            }
+        }
+    }
 }
 
 dependencies {
-    implementation fileTree(dir: 'libs', include: ['*.jar','*.aar'])
+    compile files('libs/cw-deviceapi20190815.jar')
 }

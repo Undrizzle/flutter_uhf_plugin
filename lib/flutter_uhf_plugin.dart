@@ -1,5 +1,4 @@
 import 'dart:async';
-
 import 'package:flutter/services.dart';
 
 class FlutterUhfPlugin {
@@ -24,5 +23,24 @@ class FlutterUhfPlugin {
   //单步识别标签
   static Future<String> readSingleTag() async {
     return await _channel.invokeMethod('readSignleTag');
+  }
+
+  //读取标签数据（不指定UII）
+  static Future<String> readData({String accessPwd, String bank, String ptr, String cnt}) async {
+    return await _channel.invokeMethod('readData', {
+      "accessPwd": accessPwd,
+      "bank": bank,
+      "ptr": ptr,
+      "cnt": cnt
+    });
+  }
+
+  static Future<String> readDataWithQT({String accessPwd, String bank, String ptr, String cnt}) async {
+    return await _channel.invokeMethod('readDataWithQT', {
+      "accessPwd": accessPwd,
+      "bank": bank,
+      "ptr": ptr,
+      "cnt": cnt
+    });
   }
 }
