@@ -43,8 +43,31 @@ public class FlutterUhfPlugin implements MethodCallHandler {
       String ptr = call.argument("ptr");
       String cnt = call.argument("cnt");
       result.success(readDataWithQT(accessPwd, bank, ptr, cnt));
-    }
-    else {
+    } else if (call.method.equals("getFrequencyMode")) {
+      result.success(getFrequencyMode());
+    } else if (call.method.equals("setFrequencyMode")) {
+      int mode = call.argument("mode");
+      result.success(setFrequencyMode(mode));
+    } else if (call.method.equals("getPower")) {
+      result.success(getPower());
+    } else if (call.method.equals("setPower")) {
+      int power = call.argument("power");
+      result.success(setPower(power));
+    } else if (call.method.equals("getPwm")) {
+      result.success(getPwm());
+    } else if (call.method.equals("setPwm")) {
+      int workTime = call.argument("workTime");
+      int waitTime = call.argument("waitTime");
+      result.success(setPwm(workTime, waitTime));
+    } else if (call.method.equals("stopInventory")) {
+      result.success(stopInventory());
+    } else if (call.method.equals("startInventoryTag")) {
+      int flag = call.argument("flag");
+      int initQ = call.argument("initQ");
+      result.success(startInventoryTag(flag, initQ));
+    } else if (call.method.equals("continuousRead")) {
+      result.success(continuousRead());
+    } else {
       result.notImplemented();
     }
   }
@@ -105,5 +128,41 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     } else {
       return "";
     }
+  }
+
+  private int getFrequencyMode() {
+    return mReader.getFrequencyMode();
+  }
+
+  private boolean setFrequencyMode(int mode) {
+    return mReader.setFrequencyMode((byte)mode);
+  }
+
+  private int getPower() {
+    return mReader.getPower();
+  }
+
+  private boolean setPower(int power) {
+    return mReader.setPower(power);
+  }
+
+  private int[] getPwm() {
+    return mReader.getPwm();
+  }
+
+  private boolean setPwm(int workTime, int waitTime) {
+    return mReader.setPwm(workTime, waitTime);
+  }
+
+  private boolean stopInventory() {
+    return mReader.stopInventory();
+  }
+
+  private boolean startInventoryTag(int flag, int initQ) {
+    return mReader.startInventoryTag(flag, initQ);
+  }
+
+  private String[] continuousRead() {
+    return mReader.readTagFromBuffer();
   }
 }
