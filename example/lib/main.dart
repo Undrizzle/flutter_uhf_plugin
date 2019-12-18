@@ -12,9 +12,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  String _uhfTid = 'Unknown';
-  String _uhfData = 'UnKnown';
-  String _uhfDataQT = 'Unknown';
+  List _uhfData = ['0', '0', '0'];
 
   @override
   void initState() {
@@ -30,18 +28,17 @@ class _MyAppState extends State<MyApp> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> readRFID() async {
-    String uhfTid;
-    String uhfData;
-    String uhfDataQT;
+    List uhfData;
+    bool result = false;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
-      uhfTid = await FlutterUhfPlugin.readSingleTag();
-      uhfData = await FlutterUhfPlugin.readData(accessPwd: "00000000", bank: "UII", ptr: "1", cnt: "7");
-      uhfDataQT = await FlutterUhfPlugin.readDataWithQT(accessPwd: "00000000", bank: "UII", ptr: "0", cnt: "4");
-    } on PlatformException {
-      uhfTid = 'Failed to read uhf tid';
-      uhfData = 'Failed to read uhf data';
-      uhfDataQT = 'Failed to read uhf data QT';
+      result = await FlutterUhfPlugin.startInventoryTag(flag: 1, initQ: 3);
+      if (result) {
+        uhfData = await FlutterUhfPlugin.continuousRead();
+      }
+      result = await FlutterUhfPlugin.stopInventory();
+    } on PlatformException catch (err){
+      uhfData[0] = err;
     }
 
     // If the widget was removed from the tree while the asynchronous platform
@@ -50,9 +47,7 @@ class _MyAppState extends State<MyApp> {
     if (!mounted) return;
 
     setState(() {
-      _uhfTid = uhfTid;
       _uhfData = uhfData;
-      _uhfDataQT = uhfDataQT;
     });
   }
 
@@ -66,13 +61,13 @@ class _MyAppState extends State<MyApp> {
         body: Column(
           children: <Widget>[
             Center(
-              child: Text('UHF EPC: $_uhfTid\n'),
+              child: Text('UHF tid: ${_uhfData[0]}\n'),
             ),
             Center(
-              child: Text('UHF DATA: $_uhfData\n'),
+              child: Text('UHF EPC: ${_uhfData[1]}\n'),
             ),
             Center(
-              child: Text('UHF DATA QT: $_uhfDataQT\n'),
+              child: Text('UHF RSSI: ${_uhfData[2]}\n'),
             ),
           ],
         ),
