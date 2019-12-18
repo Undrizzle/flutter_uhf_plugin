@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-
 import 'package:flutter/services.dart';
 import 'package:flutter_uhf_plugin/flutter_uhf_plugin.dart';
+import 'package:oktoast/oktoast.dart';
 
 void main() => runApp(MyApp());
 
@@ -12,7 +12,8 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  List _uhfData = ['0', '0', '0'];
+  var _uhfData = new UhfBufferData('null',  'null', 'null');
+  Timer _timer;
 
   @override
   void initState() {
@@ -28,55 +29,79 @@ class _MyAppState extends State<MyApp> {
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> readRFID() async {
-    List uhfData;
+    //var uhfData = new UhfBufferData('1', '1', '1');
+    UhfBufferData uhfData;
     bool result = false;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
-      result = await FlutterUhfPlugin.startInventoryTag(flag: 1, initQ: 3);
+      result = await FlutterUhfPlugin.startInventoryTag(flag: 0, initQ: 0);
       if (result) {
-        uhfData = await FlutterUhfPlugin.continuousRead();
+        _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+          try {
+            uhfData = await FlutterUhfPlugin.continuousRead();
+          } on PlatformException catch (err) {
+            showToast(err.toString());
+          }
+
+          if (uhfData != null) {
+            setState(() {
+              _uhfData = uhfData;
+            });
+          }
+        });
       }
-      result = await FlutterUhfPlugin.stopInventory();
     } on PlatformException catch (err){
-      uhfData[0] = err;
+      showToast(err.toString());
     }
+  }
 
-    // If the widget was removed from the tree while the asynchronous platform
-    // message was in flight, we want to discard the reply rather than calling
-    // setState to update our non-existent appearance.
-    if (!mounted) return;
-
-    setState(() {
-      _uhfData = uhfData;
-    });
+  Future<void> stop() async {
+    try {
+      FlutterUhfPlugin.stopInventory();
+      _timer.cancel();
+      _timer = null;
+    } on PlatformException {
+      showToast('stop error');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('Plugin example app'),
-        ),
-        body: Column(
-          children: <Widget>[
-            Center(
-              child: Text('UHF tid: ${_uhfData[0]}\n'),
-            ),
-            Center(
-              child: Text('UHF EPC: ${_uhfData[1]}\n'),
-            ),
-            Center(
-              child: Text('UHF RSSI: ${_uhfData[2]}\n'),
-            ),
-          ],
-        ),
-        floatingActionButton: FloatingActionButton(
-          onPressed: () {
-            readRFID();
-          },
-          tooltip: 'Read RFID',
-          child: const Icon(Icons.add),
+    return OKToast(
+        child: MaterialApp(
+        home: Scaffold(
+          appBar: AppBar(
+            title: const Text('Plugin example app'),
+          ),
+          body: Column(
+            children: <Widget>[
+              Center(
+                child: Text('UHF tid: ${_uhfData.tid}\n'),
+              ),
+              Center(
+                child: Text('UHF EPC: ${_uhfData.epc}\n'),
+              ),
+              Center(
+                child: Text('UHF RSSI: ${_uhfData.rssi}\n'),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(top: 50),
+                child: FlatButton(
+                  onPressed: () {
+                    stop();
+                  },
+                  child: Text('stop'),
+                ),
+              ),
+            ],
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              readRFID();
+            },
+            tooltip: 'Read RFID',
+            child: const Icon(Icons.add),
+          ),
         ),
       ),
     );

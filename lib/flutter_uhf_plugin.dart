@@ -2,6 +2,14 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
+class UhfBufferData {
+  final String tid;
+  final String epc;
+  final String rssi;
+
+  const UhfBufferData(this.tid, this.epc, this.rssi);
+}
+
 class FlutterUhfPlugin {
   static const MethodChannel _channel =
       const MethodChannel('flutter_uhf_plugin');
@@ -35,8 +43,9 @@ class FlutterUhfPlugin {
   }
 
   //循环读取标签数据
-  static Future<List> continuousRead() async {
-    return await _channel.invokeMethod('continuousRead');
+  static Future<UhfBufferData> continuousRead() async {
+    var result = await _channel.invokeMethod('continuousRead');
+    return UhfBufferData(result['tid'], result['epc'], result['rssi']);
   }
 
   //停止循环识别
