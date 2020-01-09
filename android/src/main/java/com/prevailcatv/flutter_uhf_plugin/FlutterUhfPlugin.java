@@ -98,7 +98,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   private String readSingleTag() {
-    String[] strData = mReader.inventorySingleTag();
+    String[] strData = mReader.inventorySingleTagEPC_TID_USER();
     return strData[1];
   }
 
