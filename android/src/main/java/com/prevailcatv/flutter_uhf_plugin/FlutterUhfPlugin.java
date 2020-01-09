@@ -12,6 +12,9 @@ import com.rscja.deviceapi.RFIDWithUHF;
 import com.rscja.deviceapi.RFIDWithUHF.BankEnum;
 import com.rscja.deviceapi.entity.SimpleRFIDEntity;
 
+import java.util.HashMap;
+import java.util.Map;
+
 /** FlutterUhfPlugin */
 public class FlutterUhfPlugin implements MethodCallHandler {
   public RFIDWithUHF mReader;
@@ -157,7 +160,27 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     return mReader.startInventoryTag(flag, initQ);
   }
 
-  private String[] continuousRead() {
-    return mReader.readTagFromBuffer();
+  private Map<String, String> continuousRead() {
+    String[] res = null;
+    String strTid;
+    Map<String, String> maps = new HashMap<>();
+    res = mReader.readTagFromBuffer();
+    if (res != null) {
+      strTid = res[0];
+      if (strTid.length() != 0 && !strTid.equals("0000000" + "000000000") && !strTid.equals("000000000000000000000000")) {
+        maps.put("tid", res[0]);
+        maps.put("epc", mReader.convertUiiToEPC(res[1]));
+        maps.put("rssi", res[2]);
+      } else {
+        maps.put("tid", "");
+        maps.put("epc", "");
+        maps.put("rssi", "");
+      }
+    } else {
+      maps.put("tid", "");
+      maps.put("epc", "");
+      maps.put("rssi", "");
+    }
+    return maps;
   }
 }
