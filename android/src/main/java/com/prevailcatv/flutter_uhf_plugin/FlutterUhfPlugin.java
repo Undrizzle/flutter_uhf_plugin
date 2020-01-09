@@ -95,13 +95,8 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   private String readSingleTag() {
-    String strUII = mReader.inventorySingleTag();
-    if (!TextUtils.isEmpty(strUII)) {
-      String strEPC = mReader.convertUiiToEPC(strUII);
-      return strEPC;
-    } else {
-      return "";
-    }
+    String[] strData = mReader.inventorySingleTag();
+    return strData[1];
   }
 
   private String readData(String accessPwd, String bank, String ptr, String cnt) {
