@@ -75,7 +75,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     }
   }
 
-  private Boolean initUFH() {
+  private boolean initUFH() {
     try {
       mReader = RFIDWithUHF.getInstance();
     } catch (Exception ex) {
@@ -89,7 +89,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     return false;
   }
 
-  private Boolean freeUHF() {
+  private boolean freeUHF() {
     if (mReader != null) {
       return mReader.free();
     }
@@ -98,8 +98,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   private String readSingleTag() {
-    String[] strData = mReader.inventorySingleTagEPC_TID_USER();
-    return strData[1];
+    return readData("00000000", "TID", "0", "6");
   }
 
   private String readData(String accessPwd, String bank, String ptr, String cnt) {
@@ -169,16 +168,13 @@ public class FlutterUhfPlugin implements MethodCallHandler {
       strTid = res[0];
       if (strTid.length() != 0 && !strTid.equals("0000000" + "000000000") && !strTid.equals("000000000000000000000000")) {
         maps.put("tid", res[0]);
-        maps.put("epc", mReader.convertUiiToEPC(res[1]));
         maps.put("rssi", res[2]);
       } else {
         maps.put("tid", "");
-        maps.put("epc", "");
         maps.put("rssi", "");
       }
     } else {
       maps.put("tid", "");
-      maps.put("epc", "");
       maps.put("rssi", "");
     }
     return maps;

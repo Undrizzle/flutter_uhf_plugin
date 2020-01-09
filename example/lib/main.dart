@@ -12,7 +12,7 @@ class MyApp extends StatefulWidget {
 }
 
 class _MyAppState extends State<MyApp> {
-  var _uhfData = new UhfBufferData('null',  'null', 'null');
+  var _uhfData = { 'tid': '', 'rssi': ''};
   Timer _timer;
 
   @override
@@ -45,7 +45,8 @@ class _MyAppState extends State<MyApp> {
 
           if (uhfData != null) {
             setState(() {
-              _uhfData = uhfData;
+              _uhfData['tid'] = uhfData.tid;
+              _uhfData['rssi'] = uhfData.rssi;
             });
           }
         });
@@ -55,13 +56,26 @@ class _MyAppState extends State<MyApp> {
     }
   }
 
+  Future<void> readSingle() async {
+    String tid;
+    try {
+      tid = await FlutterUhfPlugin.readSingleTag();
+      setState(() {
+        _uhfData['tid'] = tid;
+      });
+    } on PlatformException catch (err) {
+      showToast(err.toString());
+    }
+  }
+
   Future<void> stop() async {
     try {
       FlutterUhfPlugin.stopInventory();
       _timer.cancel();
       _timer = null;
-    } on PlatformException {
-      showToast('stop error');
+      showToast('stop success');
+    } on PlatformException catch (err){
+      showToast(err.toString());
     }
   }
 
@@ -76,13 +90,19 @@ class _MyAppState extends State<MyApp> {
           body: Column(
             children: <Widget>[
               Center(
-                child: Text('UHF tid: ${_uhfData.tid}\n'),
+                child: Text('UHF tid: ${_uhfData['tid']}\n'),
               ),
               Center(
-                child: Text('UHF EPC: ${_uhfData.epc}\n'),
+                child: Text('UHF RSSI: ${_uhfData['rssi']}\n'),
               ),
-              Center(
-                child: Text('UHF RSSI: ${_uhfData.rssi}\n'),
+              Padding(
+                padding: const EdgeInsets.only(top: 50),
+                child: FlatButton(
+                  onPressed: () {
+                    readSingle();
+                  },
+                  child: Text('单歩'),
+                )
               ),
               Padding(
                 padding: const EdgeInsets.only(top: 50),
