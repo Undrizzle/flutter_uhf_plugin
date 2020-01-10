@@ -6,18 +6,18 @@ import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 
-import android.text.TextUtils;
-
 import com.rscja.deviceapi.RFIDWithUHF;
 import com.rscja.deviceapi.RFIDWithUHF.BankEnum;
 import com.rscja.deviceapi.entity.SimpleRFIDEntity;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Arrays;
 
 /** FlutterUhfPlugin */
 public class FlutterUhfPlugin implements MethodCallHandler {
-  public RFIDWithUHF mReader;
+  private RFIDWithUHF mReader;
+  private boolean loopFlag = false;
   /** Plugin registration. */
   public static void registerWith(Registrar registrar) {
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_uhf_plugin");
@@ -26,9 +26,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
 
   @Override
   public void onMethodCall(MethodCall call, Result result) {
-    if (call.method.equals("getPlatformVersion")) {
-      result.success("Android " + android.os.Build.VERSION.RELEASE);
-    } else if (call.method.equals("initUHF")) {
+    if (call.method.equals("initUHF")) {
       result.success(initUFH());
     }  else if (call.method.equals("freeUHF")) {
       result.success(freeUHF());
@@ -69,7 +67,8 @@ public class FlutterUhfPlugin implements MethodCallHandler {
       int initQ = call.argument("initQ");
       result.success(startInventoryTag(flag, initQ));
     } else if (call.method.equals("continuousRead")) {
-      result.success(continuousRead());
+      loopFlag = true;
+      new TagThread(result).start();
     } else {
       result.notImplemented();
     }
@@ -152,31 +151,42 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   private boolean stopInventory() {
-    return mReader.stopInventory();
+    if (loopFlag) {
+      loopFlag = false;
+      return mReader.stopInventory();
+    }
+    return true;
   }
 
   private boolean startInventoryTag(int flag, int initQ) {
     return mReader.startInventoryTag(flag, initQ);
   }
 
-  private Map<String, String> continuousRead() {
-    String[] res = null;
-    String strTid;
-    Map<String, String> maps = new HashMap<>();
-    res = mReader.readTagFromBuffer();
-    if (res != null) {
-      strTid = res[0];
-      if (strTid.length() != 0 && !strTid.equals("0000000" + "000000000") && !strTid.equals("000000000000000000000000")) {
-        maps.put("tid", res[0]);
-        maps.put("rssi", res[2]);
-      } else {
-        maps.put("tid", "");
-        maps.put("rssi", "");
-      }
-    } else {
-      maps.put("tid", "");
-      maps.put("rssi", "");
+  class TagThread extends Thread {
+    private Result result;
+
+    public  TagThread(Result result) {
+      this.result = result;
     }
-    return maps;
+
+    public void run() {
+      String strTid;
+      String[] res = null;
+      Map<String, String> maps = new HashMap<>();
+      while (loopFlag) {
+        res = mReader.readTagFromBuffer();
+        System.out.println(Arrays.toString(res));
+        if (res != null) {
+          strTid = res[0];
+          if (strTid.length() != 0 && !strTid.equals("0000000" +
+                  "000000000") && !strTid.equals("000000000000000000000000")) {
+            maps.put("tid", res[0]);
+            maps.put("rssi", res[2]);
+            System.out.println(maps);
+            result.success(maps);
+          }
+        }
+      }
+    }
   }
 }

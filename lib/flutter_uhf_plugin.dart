@@ -44,6 +44,7 @@ class FlutterUhfPlugin {
   //循环读取标签数据
   static Future<UhfBufferData> continuousRead() async {
     var result = await _channel.invokeMethod('continuousRead');
+    print(result);
     return UhfBufferData(result['tid'], result['rssi']);
   }
 

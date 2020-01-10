@@ -13,7 +13,7 @@ class MyApp extends StatefulWidget {
 
 class _MyAppState extends State<MyApp> {
   var _uhfData = { 'tid': '', 'rssi': ''};
-  Timer _timer;
+  FocusNode _focusNode = FocusNode();
 
   @override
   void initState() {
@@ -36,20 +36,18 @@ class _MyAppState extends State<MyApp> {
     try {
       result = await FlutterUhfPlugin.startInventoryTag(flag: 0, initQ: 0);
       if (result) {
-        _timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
-          try {
-            uhfData = await FlutterUhfPlugin.continuousRead();
-          } on PlatformException catch (err) {
-            showToast(err.toString());
-          }
+        try {
+          uhfData = await FlutterUhfPlugin.continuousRead();
+        } on PlatformException catch (err) {
+          showToast(err.toString());
+        }
 
-          if (uhfData != null) {
-            setState(() {
-              _uhfData['tid'] = uhfData.tid;
-              _uhfData['rssi'] = uhfData.rssi;
-            });
-          }
-        });
+        if (uhfData != null) {
+          setState(() {
+            _uhfData['tid'] = uhfData.tid;
+            _uhfData['rssi'] = uhfData.rssi;
+          });
+        }
       }
     } on PlatformException catch (err){
       showToast(err.toString());
@@ -70,60 +68,73 @@ class _MyAppState extends State<MyApp> {
 
   Future<void> stop() async {
     try {
-      FlutterUhfPlugin.stopInventory();
-      _timer.cancel();
-      _timer = null;
+      await FlutterUhfPlugin.stopInventory();
       showToast('stop success');
     } on PlatformException catch (err){
       showToast(err.toString());
     }
   }
 
+  void _handleKeydown(RawKeyEvent event) {
+    if (event is RawKeyDownEvent && event.data is RawKeyEventDataAndroid) {
+      RawKeyDownEvent rawKeyDownEvent = event;
+      RawKeyEventDataAndroid rawKeyEventDataAndroid = rawKeyDownEvent.data;
+      print(rawKeyEventDataAndroid.keyCode);
+      if (rawKeyEventDataAndroid.keyCode == 139 || rawKeyEventDataAndroid.keyCode == 280) {
+        readRFID();
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return OKToast(
-        child: MaterialApp(
-        home: Scaffold(
-          appBar: AppBar(
-            title: const Text('Plugin example app'),
-          ),
-          body: Column(
-            children: <Widget>[
-              Center(
-                child: Text('UHF tid: ${_uhfData['tid']}\n'),
+        child: new RawKeyboardListener(
+          focusNode: _focusNode,
+          onKey: _handleKeydown,
+          child: MaterialApp(
+            home: Scaffold(
+              appBar: AppBar(
+                title: const Text('Plugin example app'),
               ),
-              Center(
-                child: Text('UHF RSSI: ${_uhfData['rssi']}\n'),
+              body: Column(
+                children: <Widget>[
+                  Center(
+                    child: Text('UHF tid: ${_uhfData['tid']}\n'),
+                  ),
+                  Center(
+                    child: Text('UHF RSSI: ${_uhfData['rssi']}\n'),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 50),
+                    child: FlatButton(
+                      onPressed: () {
+                        readSingle();
+                      },
+                      child: Text('单歩'),
+                    )
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(top: 50),
+                    child: FlatButton(
+                      onPressed: () {
+                        stop();
+                      },
+                      child: Text('stop'),
+                    ),
+                  ),
+                ],
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 50),
-                child: FlatButton(
-                  onPressed: () {
-                    readSingle();
-                  },
-                  child: Text('单歩'),
-                )
+              floatingActionButton: FloatingActionButton(
+                onPressed: () {
+                  readRFID();
+                },
+                tooltip: 'Read RFID',
+                child: const Icon(Icons.add),
               ),
-              Padding(
-                padding: const EdgeInsets.only(top: 50),
-                child: FlatButton(
-                  onPressed: () {
-                    stop();
-                  },
-                  child: Text('stop'),
-                ),
-              ),
-            ],
-          ),
-          floatingActionButton: FloatingActionButton(
-            onPressed: () {
-              readRFID();
-            },
-            tooltip: 'Read RFID',
-            child: const Icon(Icons.add),
+            ),
           ),
         ),
-      ),
     );
   }
 }
