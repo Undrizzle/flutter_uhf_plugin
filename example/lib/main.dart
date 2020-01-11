@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
+import 'dart:isolate';
 import 'package:flutter/services.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_uhf_plugin/flutter_uhf_plugin.dart';
 import 'package:oktoast/oktoast.dart';
 
@@ -14,6 +16,7 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   var _uhfData = { 'tid': '', 'rssi': ''};
   FocusNode _focusNode = FocusNode();
+  //Timer _timer;
 
   @override
   void initState() {
@@ -30,24 +33,26 @@ class _MyAppState extends State<MyApp> {
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> readRFID() async {
     //var uhfData = new UhfBufferData('1', '1', '1');
-    UhfBufferData uhfData;
+    //UhfBufferData uhfData;
     bool result = false;
     // Platform messages may fail, so we use a try/catch PlatformException.
     try {
       result = await FlutterUhfPlugin.startInventoryTag(flag: 0, initQ: 0);
       if (result) {
-        try {
-          uhfData = await FlutterUhfPlugin.continuousRead();
-        } on PlatformException catch (err) {
-          showToast(err.toString());
-        }
+        /*_timer = Timer.periodic(const Duration(seconds: 1), (timer) async {
+          try {
+            uhfData = await FlutterUhfPlugin.continuousRead();
+          } on PlatformException catch (err) {
+            showToast(err.toString());
+          }
 
-        if (uhfData != null) {
-          setState(() {
-            _uhfData['tid'] = uhfData.tid;
-            _uhfData['rssi'] = uhfData.rssi;
-          });
-        }
+          if (uhfData != null) {
+            setState(() {
+              _uhfData['tid'] = uhfData.tid;
+              _uhfData['rssi'] = uhfData.rssi;
+            });
+          }
+        });*/
       }
     } on PlatformException catch (err){
       showToast(err.toString());
@@ -69,6 +74,8 @@ class _MyAppState extends State<MyApp> {
   Future<void> stop() async {
     try {
       await FlutterUhfPlugin.stopInventory();
+      //_timer.cancel();
+      //_timer = null;
       showToast('stop success');
     } on PlatformException catch (err){
       showToast(err.toString());
@@ -85,6 +92,41 @@ class _MyAppState extends State<MyApp> {
       }
     }
   }
+
+/*
+  Future<void> isolateContinuousRead() async {
+    final response = ReceivePort();
+    await Isolate.spawn(continuousRead, response.sendPort);
+    final sendPort = await response.first;
+    final answer = ReceivePort();
+    sendPort.send([answer.sendPort]);
+  }
+
+  void continuousRead(SendPort port) {
+    final rPort = ReceivePort();
+    port.send(rPort.sendPort);
+    rPort.listen((message) {
+      final send = message[0] as SendPort;
+      send.send(getTIDandEPC);
+    });
+  }
+
+  Future<void> getTIDandEPC(bool isLoop) async {
+    UhfBufferData uhfData;
+    try {
+      uhfData = await FlutterUhfPlugin.continuousRead();
+    } on PlatformException {
+      showToast("get TID and EPC error");
+    }
+
+    if (uhfData != null) {
+      setState(() {
+        _uhfData['tid'] = uhfData.tid;
+        _uhfData['rssi'] = uhfData.rssi;
+      });
+    }
+  }
+  */
 
   @override
   Widget build(BuildContext context) {

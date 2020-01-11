@@ -1,5 +1,8 @@
 package com.prevailcatv.flutter_uhf_plugin;
 
+import android.os.Handler;
+import android.os.Looper;
+
 import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -67,8 +70,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
       int initQ = call.argument("initQ");
       result.success(startInventoryTag(flag, initQ));
     } else if (call.method.equals("continuousRead")) {
-      loopFlag = true;
-      new TagThread(result).start();
+      result.success(continuousRead());
     } else {
       result.notImplemented();
     }
@@ -151,28 +153,50 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   private boolean stopInventory() {
-    if (loopFlag) {
-      loopFlag = false;
-      return mReader.stopInventory();
-    }
-    return true;
+    loopFlag = false;
+    return mReader.stopInventory();
   }
 
   private boolean startInventoryTag(int flag, int initQ) {
+    boolean result = mReader.openInventoryEPCAndTIDMode();
+    if (result == false) {
+      return result;
+    }
     return mReader.startInventoryTag(flag, initQ);
+  }
+
+  private Map<String, String> continuousRead() {
+    String[] res = null;
+    String strTid;
+    Map<String, String> maps = new HashMap<>();
+    res = mReader.readTagFromBuffer();
+    if (res != null) {
+      strTid = res[0];
+      if (strTid.length() != 0 && !strTid.equals("0000000" + "000000000") && !strTid.equals("000000000000000000000000")) {
+        maps.put("tid", res[0]);
+        maps.put("rssi", res[2]);
+      } else {
+        maps.put("tid", "");
+        maps.put("rssi", "");
+      }
+    } else {
+      maps.put("tid", "");
+      maps.put("rssi", "");
+    }
+    return maps;
   }
 
   class TagThread extends Thread {
     private Result result;
 
-    public  TagThread(Result result) {
+    public TagThread(Result result) {
       this.result = result;
     }
 
     public void run() {
       String strTid;
       String[] res = null;
-      Map<String, String> maps = new HashMap<>();
+      final Map<String, String> maps = new HashMap<>();
       while (loopFlag) {
         res = mReader.readTagFromBuffer();
         System.out.println(Arrays.toString(res));
@@ -183,7 +207,13 @@ public class FlutterUhfPlugin implements MethodCallHandler {
             maps.put("tid", res[0]);
             maps.put("rssi", res[2]);
             System.out.println(maps);
-            result.success(maps);
+            
+            new Handler(Looper.getMainLooper()).post(new Runnable() {
+              @Override
+              public void run() {
+                result.success(maps);
+              }
+            });
           }
         }
       }
