@@ -159,7 +159,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
 
   private boolean startInventoryTag(int flag, int initQ) {
     boolean result = mReader.openInventoryEPCAndTIDMode();
-    if (result == false) {
+    if (!result) {
       return result;
     }
     return mReader.startInventoryTag(flag, initQ);
@@ -172,7 +172,8 @@ public class FlutterUhfPlugin implements MethodCallHandler {
     res = mReader.readTagFromBuffer();
     if (res != null) {
       strTid = res[0];
-      if (strTid.length() != 0 && !strTid.equals("0000000" + "000000000") && !strTid.equals("000000000000000000000000")) {
+      if (strTid.length() == 24 && !strTid.equals("0000000" +
+              "000000000") && !strTid.equals("000000000000000000000000")) {
         maps.put("tid", res[0]);
         maps.put("rssi", res[2]);
       } else {
