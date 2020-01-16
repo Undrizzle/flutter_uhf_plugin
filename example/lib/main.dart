@@ -19,55 +19,50 @@ class MyApp extends StatefulWidget {
 class _MyAppState extends State<MyApp> {
   var _uhfData = { 'tid': '', 'rssi': ''};
   FocusNode _focusNode = FocusNode();
-  Timer _timer;
 
   AudioCache audioCache = AudioCache();
-  bool firstPlay = true;
 
   @override
   void initState() {
     super.initState();
     FlutterUhfPlugin.initUHF();
+    loadFile();
   }
 
   @override
   void dispose() {
     FlutterUhfPlugin.freeUHF();
+    audioCache.clearCache();
     super.dispose();
+  }
+
+  Future<void> loadFile() async {
+    await audioCache.load('audios/barcodebeep.ogg');
   }
 
   // Platform messages are asynchronous, so we initialize in an async method.
   Future<void> readRFID() async {
-    //var uhfData = new UhfBufferData('1', '1', '1');
-    UhfBufferData uhfData;
+    var uhfData;
     bool result = false;
-    // Platform messages may fail, so we use a try/catch PlatformException.
+
     try {
       result = await FlutterUhfPlugin.startInventoryTag(flag: 0, initQ: 0);
       if (result) {
-        _timer = Timer.periodic(const Duration(milliseconds: 20), (timer) async {
-          try {
-            uhfData = await FlutterUhfPlugin.continuousRead();
-            print(uhfData.tid);
-            print(uhfData.rssi);
-          } on PlatformException {
-            showToast("get tid error");
-          }
+        try {
+          await for (uhfData in FlutterUhfPlugin.continuousRead()) {
+            print(uhfData);
 
-          if (uhfData != null) {
-            if (firstPlay) {
-              audioCache.play("audios/barcodebeep.ogg");
-              firstPlay = false;
-            } else {
-              audioCache.play(
-                  "audios/barcodebeep.ogg", mode: PlayerMode.LOW_LATENCY);
+            if (uhfData != null) {
+              audioCache.play("audios/barcodebeep.ogg", mode: PlayerMode.LOW_LATENCY);
+              setState(() {
+                _uhfData['tid'] = uhfData['tid'];
+                _uhfData['rssi'] = uhfData['rssi'];
+              });
             }
-            setState(() {
-              _uhfData['tid'] = uhfData.tid;
-              _uhfData['rssi'] = uhfData.rssi;
-            });
           }
-        });
+        } on PlatformException {
+          showToast("get tid error");
+        }
       }
     } on PlatformException catch (err){
       showToast(err.toString());
@@ -90,10 +85,6 @@ class _MyAppState extends State<MyApp> {
   Future<void> stop() async {
     try {
       await FlutterUhfPlugin.stopInventory();
-      if (_timer != null) {
-        _timer.cancel();
-        _timer = null;
-      }
       showToast('stop success');
     } on PlatformException {
       showToast('stop error');

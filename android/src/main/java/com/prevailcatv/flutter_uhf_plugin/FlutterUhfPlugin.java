@@ -8,6 +8,7 @@ import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
+import io.flutter.plugin.common.EventChannel;
 
 import com.rscja.deviceapi.RFIDWithUHF;
 import com.rscja.deviceapi.RFIDWithUHF.BankEnum;
@@ -15,16 +16,21 @@ import com.rscja.deviceapi.entity.SimpleRFIDEntity;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Arrays;
 
 /** FlutterUhfPlugin */
-public class FlutterUhfPlugin implements MethodCallHandler {
+public class FlutterUhfPlugin implements MethodCallHandler, EventChannel.StreamHandler {
   private RFIDWithUHF mReader;
   private boolean loopFlag = false;
+
+  private EventSinkWrapper eventSink;
   /** Plugin registration. */
   public static void registerWith(Registrar registrar) {
+    FlutterUhfPlugin flutterUhfPlugin = new FlutterUhfPlugin();
     final MethodChannel channel = new MethodChannel(registrar.messenger(), "flutter_uhf_plugin");
-    channel.setMethodCallHandler(new FlutterUhfPlugin());
+    channel.setMethodCallHandler(flutterUhfPlugin);
+
+    final EventChannel eventChannel = new EventChannel(registrar.messenger(), "tidStream");
+    eventChannel.setStreamHandler(flutterUhfPlugin);
   }
 
   @Override
@@ -33,7 +39,7 @@ public class FlutterUhfPlugin implements MethodCallHandler {
       result.success(initUFH());
     }  else if (call.method.equals("freeUHF")) {
       result.success(freeUHF());
-    } else if (call.method.equals("readSignleTag")) {
+    } else if (call.method.equals("readSingleTag")) {
       result.success(readSingleTag());
     } else if (call.method.equals("readData")) {
       String accessPwd = call.argument("accessPwd");
@@ -160,9 +166,13 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   private boolean startInventoryTag(int flag, int initQ) {
     boolean result = mReader.openInventoryEPCAndTIDMode();
     if (!result) {
-      return result;
+      return false;
     }
-    return mReader.startInventoryTag(flag, initQ);
+    result = mReader.startInventoryTag(flag, initQ);
+    if (result) {
+      loopFlag = true;
+    }
+    return result;
   }
 
   private Map<String, String> continuousRead() {
@@ -188,36 +198,87 @@ public class FlutterUhfPlugin implements MethodCallHandler {
   }
 
   class TagThread extends Thread {
-    private Result result;
-
-    public TagThread(Result result) {
-      this.result = result;
-    }
-
     public void run() {
       String strTid;
       String[] res = null;
       final Map<String, String> maps = new HashMap<>();
+
       while (loopFlag) {
         res = mReader.readTagFromBuffer();
-        System.out.println(Arrays.toString(res));
         if (res != null) {
           strTid = res[0];
-          if (strTid.length() != 0 && !strTid.equals("0000000" +
+          if (strTid.length() == 24 && !strTid.equals("0000000" +
                   "000000000") && !strTid.equals("000000000000000000000000")) {
             maps.put("tid", res[0]);
             maps.put("rssi", res[2]);
-            System.out.println(maps);
-            
-            new Handler(Looper.getMainLooper()).post(new Runnable() {
-              @Override
-              public void run() {
-                result.success(maps);
-              }
-            });
+            sendEvent(maps);
           }
         }
       }
     }
   }
+
+  @Override
+  public void onListen(Object o, EventChannel.EventSink eventSink) {
+    this.eventSink = new EventSinkWrapper(eventSink);
+    new TagThread().start();
+  }
+
+  @Override
+  public void onCancel(Object o) {
+    this.eventSink = null;
+  }
+
+  private void sendEvent(Object data) {
+    if (eventSink != null) {
+      eventSink.success(data);
+    }
+  }
+
+  private static class EventSinkWrapper implements EventChannel.EventSink {
+    private EventChannel.EventSink eventSink;
+    private Handler handler;
+
+    EventSinkWrapper(EventChannel.EventSink sink) {
+      eventSink = sink;
+      handler = new Handler(Looper.getMainLooper());
+    }
+
+    @Override
+    public void success(final Object result) {
+      handler.post(
+              new Runnable() {
+                @Override
+                public void run() {
+                  eventSink.success(result);
+                }
+              }
+      );
+    }
+
+    @Override
+    public void error(final String errorCode, final String errorMessage, final Object errorDetails) {
+       handler.post(
+               new Runnable() {
+                 @Override
+                 public void run() {
+                   eventSink.error(errorCode, errorMessage, errorDetails);
+                 }
+               }
+       );
+    }
+
+    @Override
+    public void endOfStream() {
+      handler.post(
+              new Runnable() {
+                @Override
+                public void run() {
+                  eventSink.endOfStream();
+                }
+              }
+      );
+    }
+  }
 }
+

@@ -2,21 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 import 'package:flutter/services.dart';
 
-class UhfBufferData {
-  final String tid;
-  final String rssi;
-
-  const UhfBufferData(this.tid, this.rssi);
-}
-
 class FlutterUhfPlugin {
   static const MethodChannel _channel =
       const MethodChannel('flutter_uhf_plugin');
-
-  static Future<String> get platformVersion async {
-    final String version = await _channel.invokeMethod('getPlatformVersion');
-    return version;
-  }
+  static const EventChannel _eventChannel = const EventChannel('tidStream');
 
   //初始化UHF模块
   static Future<bool> initUHF() async {
@@ -30,7 +19,7 @@ class FlutterUhfPlugin {
 
   //单步识别标签
   static Future<String> readSingleTag() async {
-    return await _channel.invokeMethod('readSignleTag');
+    return await _channel.invokeMethod('readSingleTag');
   }
 
   //循环识别标签
@@ -42,9 +31,8 @@ class FlutterUhfPlugin {
   }
 
   //循环读取标签数据
-  static Future<UhfBufferData> continuousRead() async {
-    var result = await _channel.invokeMethod('continuousRead');
-    return UhfBufferData(result['tid'], result['rssi']);
+  static Stream<dynamic> continuousRead() {
+    return _eventChannel.receiveBroadcastStream();
   }
 
   //停止循环识别

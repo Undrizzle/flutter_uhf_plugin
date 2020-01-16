@@ -15,7 +15,7 @@ void main() {
     channel.setMockMethodCallHandler(null);
   });
 
-  test('getPlatformVersion', () async {
-    expect(await FlutterUhfPlugin.platformVersion, '42');
+  test('getSingleTid', () async {
+    expect(await FlutterUhfPlugin.readSingleTag, '42');
   });
 }
