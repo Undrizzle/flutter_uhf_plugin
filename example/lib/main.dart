@@ -46,7 +46,7 @@ class _MyAppState extends State<MyApp> {
     bool result = false;
 
     try {
-      result = await FlutterUhfPlugin.startInventoryTag(flag: 0, initQ: 0);
+      result = await FlutterUhfPlugin.startInventoryTag();
       if (result) {
         try {
           await for (uhfData in FlutterUhfPlugin.continuousRead()) {
@@ -92,6 +92,7 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleKeydown(RawKeyEvent event) {
+    print("come to key event");
     if (event is RawKeyDownEvent && event.data is RawKeyEventDataAndroid) {
       RawKeyDownEvent rawKeyDownEvent = event;
       RawKeyEventDataAndroid rawKeyEventDataAndroid = rawKeyDownEvent.data;

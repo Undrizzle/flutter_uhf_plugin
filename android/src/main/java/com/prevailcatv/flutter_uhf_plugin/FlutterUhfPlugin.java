@@ -10,16 +10,20 @@ import io.flutter.plugin.common.MethodChannel.Result;
 import io.flutter.plugin.common.PluginRegistry.Registrar;
 import io.flutter.plugin.common.EventChannel;
 
-import com.rscja.deviceapi.RFIDWithUHF;
-import com.rscja.deviceapi.RFIDWithUHF.BankEnum;
-import com.rscja.deviceapi.entity.SimpleRFIDEntity;
+import com.handheld.uhfr.UHFRManager;
+import com.uhf.api.cls.Reader;
+import com.uhf.api.cls.Reader.TAGINFO;
+
+import cn.pda.serialport.Tools;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.lang.String;
 
 /** FlutterUhfPlugin */
 public class FlutterUhfPlugin implements MethodCallHandler, EventChannel.StreamHandler {
-  private RFIDWithUHF mReader;
+  private static UHFRManager mUhfrManager;
   private boolean loopFlag = false;
 
   private EventSinkWrapper eventSink;
@@ -41,18 +45,6 @@ public class FlutterUhfPlugin implements MethodCallHandler, EventChannel.StreamH
       result.success(freeUHF());
     } else if (call.method.equals("readSingleTag")) {
       result.success(readSingleTag());
-    } else if (call.method.equals("readData")) {
-      String accessPwd = call.argument("accessPwd");
-      String bank = call.argument("bank");
-      String ptr = call.argument("ptr");
-      String cnt = call.argument("cnt");
-      result.success(readData(accessPwd, bank, ptr, cnt));
-    } else if (call.method.equals("readDataWithQT")) {
-      String accessPwd = call.argument("accessPwd");
-      String bank = call.argument("bank");
-      String ptr = call.argument("ptr");
-      String cnt = call.argument("cnt");
-      result.success(readDataWithQT(accessPwd, bank, ptr, cnt));
     } else if (call.method.equals("getFrequencyMode")) {
       result.success(getFrequencyMode());
     } else if (call.method.equals("setFrequencyMode")) {
@@ -63,20 +55,10 @@ public class FlutterUhfPlugin implements MethodCallHandler, EventChannel.StreamH
     } else if (call.method.equals("setPower")) {
       int power = call.argument("power");
       result.success(setPower(power));
-    } else if (call.method.equals("getPwm")) {
-      result.success(getPwm());
-    } else if (call.method.equals("setPwm")) {
-      int workTime = call.argument("workTime");
-      int waitTime = call.argument("waitTime");
-      result.success(setPwm(workTime, waitTime));
     } else if (call.method.equals("stopInventory")) {
       result.success(stopInventory());
     } else if (call.method.equals("startInventoryTag")) {
-      int flag = call.argument("flag");
-      int initQ = call.argument("initQ");
-      result.success(startInventoryTag(flag, initQ));
-    } else if (call.method.equals("continuousRead")) {
-      result.success(continuousRead());
+      result.success(startInventoryTag());
     } else {
       result.notImplemented();
     }
@@ -84,134 +66,131 @@ public class FlutterUhfPlugin implements MethodCallHandler, EventChannel.StreamH
 
   private boolean initUFH() {
     try {
-      mReader = RFIDWithUHF.getInstance();
+      mUhfrManager = UHFRManager.getInstance();
     } catch (Exception ex) {
       return false;
     }
 
-    if (mReader != null) {
-      return mReader.init();
-    }
-
-    return false;
+    return mUhfrManager != null;
   }
 
   private boolean freeUHF() {
-    if (mReader != null) {
-      return mReader.free();
+    boolean result;
+
+    if (mUhfrManager != null) {
+      result = mUhfrManager.close();
+      mUhfrManager = null;
+      return result;
     }
 
     return false;
   }
 
   private String readSingleTag() {
-    return readData("00000000", "TID", "0", "6");
-  }
-
-  private String readData(String accessPwd, String bank, String ptr, String cnt) {
-    SimpleRFIDEntity entity = mReader.readData(accessPwd,
-            BankEnum.valueOf(bank),
-            Integer.parseInt(ptr),
-            Integer.parseInt(cnt));
-
-    if (entity != null) {
-      return entity.getData();
+    byte[] readBytes = new byte[12];
+    Reader.READER_ERR er;
+    er = readData(2, 0, 6, readBytes, Tools.HexString2Bytes("00000000"), (short)1000);
+    if (er == Reader.READER_ERR.MT_OK_ERR) {
+      return Tools.Bytes2HexString(readBytes, readBytes.length);
     } else {
       return "";
     }
   }
 
-  private String readDataWithQT(String accessPwd, String bank, String ptr, String cnt) {
-    SimpleRFIDEntity entity = mReader.readDataWithQT(accessPwd,
-            BankEnum.valueOf(bank),
-            Integer.parseInt(ptr),
-            Integer.parseInt(cnt));
-
-    if (entity != null) {
-      return entity.getData();
-    } else {
-      return "";
-    }
+  private Reader.READER_ERR readData(int mbank, int startaddr, int len, byte[] rdata, byte[] password, short timeout) {
+    return mUhfrManager.getTagData(mbank, startaddr, len, rdata, password, timeout);
   }
 
   private int getFrequencyMode() {
-    return mReader.getFrequencyMode();
+    int frequency = 0;
+    Reader.Region_Conf region = mUhfrManager.getRegion();
+   if (region == Reader.Region_Conf.RG_NA) {
+      frequency = 1;
+    } else if (region == Reader.Region_Conf.RG_NONE) {
+      frequency = 2;
+    } else if (region == Reader.Region_Conf.RG_KR) {
+      frequency = 3;
+    } else if (region == Reader.Region_Conf.RG_EU) {
+      frequency = 4;
+    } else if (region == Reader.Region_Conf.RG_EU2) {
+      frequency = 5;
+    } else if (region == Reader.Region_Conf.RG_EU3) {
+      frequency = 6;
+    }
+
+    return frequency;
   }
 
   private boolean setFrequencyMode(int mode) {
-    return mReader.setFrequencyMode((byte)mode);
+    Reader.Region_Conf region = Reader.Region_Conf.RG_PRC;
+    switch (mode) {
+      case 0:
+        region = Reader.Region_Conf.RG_PRC;
+        break;
+      case 1:
+        region = Reader.Region_Conf.RG_NA;
+        break;
+      case 2:
+        region = Reader.Region_Conf.RG_NONE;
+        break;
+      case 3:
+        region = Reader.Region_Conf.RG_KR;
+        break;
+      case 4:
+        region = Reader.Region_Conf.RG_EU;
+        break;
+      case 5:
+        region = Reader.Region_Conf.RG_EU2;
+        break;
+      case 6:
+        region = Reader.Region_Conf.RG_EU3;
+        break;
+    }
+
+    Reader.READER_ERR er = mUhfrManager.setRegion(region);
+    return er == Reader.READER_ERR.MT_OK_ERR;
   }
 
   private int getPower() {
-    return mReader.getPower();
+    int[] power = mUhfrManager.getPower();
+    if (power != null) {
+      return power[0];
+    } else {
+      return 0;
+    }
   }
 
   private boolean setPower(int power) {
-    return mReader.setPower(power);
-  }
-
-  private int[] getPwm() {
-    return mReader.getPwm();
-  }
-
-  private boolean setPwm(int workTime, int waitTime) {
-    return mReader.setPwm(workTime, waitTime);
+    Reader.READER_ERR er = mUhfrManager.setPower(power, 20);
+    return er == Reader.READER_ERR.MT_OK_ERR;
   }
 
   private boolean stopInventory() {
     loopFlag = false;
-    return mReader.stopInventory();
+    return mUhfrManager.stopTagInventory();
   }
 
-  private boolean startInventoryTag(int flag, int initQ) {
-    boolean result = mReader.openInventoryEPCAndTIDMode();
-    if (!result) {
-      return false;
-    }
-    result = mReader.startInventoryTag(flag, initQ);
-    if (result) {
-      loopFlag = true;
-    }
-    return result;
-  }
-
-  private Map<String, String> continuousRead() {
-    String[] res = null;
-    String strTid;
-    Map<String, String> maps = new HashMap<>();
-    res = mReader.readTagFromBuffer();
-    if (res != null) {
-      strTid = res[0];
-      if (strTid.length() == 24 && !strTid.equals("0000000" +
-              "000000000") && !strTid.equals("000000000000000000000000")) {
-        maps.put("tid", res[0]);
-        maps.put("rssi", res[2]);
-      } else {
-        maps.put("tid", "");
-        maps.put("rssi", "");
-      }
-    } else {
-      maps.put("tid", "");
-      maps.put("rssi", "");
-    }
-    return maps;
+  private boolean startInventoryTag() {
+    loopFlag = true;
+    return true;
   }
 
   class TagThread extends Thread {
     public void run() {
-      String strTid;
-      String[] res = null;
+      List<TAGINFO> res = null;
       final Map<String, String> maps = new HashMap<>();
+      String tid;
 
       while (loopFlag) {
-        res = mReader.readTagFromBuffer();
-        if (res != null) {
-          strTid = res[0];
-          if (strTid.length() == 24 && !strTid.equals("0000000" +
-                  "000000000") && !strTid.equals("000000000000000000000000")) {
-            maps.put("tid", res[0]);
-            maps.put("rssi", res[2]);
-            sendEvent(maps);
+        res = mUhfrManager.tagEpcTidInventoryByTimer((short) 50);
+        if (res != null && res.size() > 0) {
+          for (TAGINFO tfs: res) {
+            tid = Tools.Bytes2HexString(tfs.EmbededData, tfs.EmbededDatalen);
+            if (tid != null && tid != "") {
+              maps.put("tid", tid);
+              maps.put("rssi", String.valueOf(tfs.RSSI));
+              sendEvent(maps);
+            }
           }
         }
       }

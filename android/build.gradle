@@ -53,5 +53,6 @@ android {
 }
 
 dependencies {
-    implementation files('libs/cw-deviceapi20190815.jar')
+    implementation files('libs/uhfr6_v1.5.jar')
+    implementation files('libs/ModuleAPI_J.jar')
 }
