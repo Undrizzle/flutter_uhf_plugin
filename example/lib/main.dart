@@ -20,6 +20,7 @@ class _MyAppState extends State<MyApp> {
   var _uhfData = { 'tid': '', 'rssi': ''};
   FocusNode _focusNode = FocusNode();
 
+
   AudioCache audioCache = AudioCache();
 
   @override
@@ -33,6 +34,7 @@ class _MyAppState extends State<MyApp> {
   void dispose() {
     FlutterUhfPlugin.freeUHF();
     audioCache.clearCache();
+    _focusNode.dispose();
     super.dispose();
   }
 
@@ -105,16 +107,20 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
+    FocusScope.of(context).requestFocus(_focusNode);
     return OKToast(
-        child: new RawKeyboardListener(
-          focusNode: _focusNode,
-          onKey: _handleKeydown,
           child: MaterialApp(
-            home: Scaffold(
+            home:
+            Scaffold(
               appBar: AppBar(
                 title: const Text('Plugin example app'),
               ),
-              body: Column(
+              body: new RawKeyboardListener(
+                focusNode: _focusNode,
+                onKey: (RawKeyEvent event){
+                  print("come to key event");
+                },
+                child: Column(
                 children: <Widget>[
                   Center(
                     child: Text('UHF tid: ${_uhfData['tid']}\n'),
@@ -141,6 +147,7 @@ class _MyAppState extends State<MyApp> {
                     ),
                   ),
                 ],
+                ),
               ),
               floatingActionButton: FloatingActionButton(
                 onPressed: () {
@@ -150,7 +157,6 @@ class _MyAppState extends State<MyApp> {
                 child: const Icon(Icons.add),
               ),
             ),
-          ),
         ),
     );
   }
