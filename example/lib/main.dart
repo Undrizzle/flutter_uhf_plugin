@@ -94,12 +94,10 @@ class _MyAppState extends State<MyApp> {
   }
 
   void _handleKeydown(RawKeyEvent event) {
-    print("come to key event");
     if (event is RawKeyDownEvent && event.data is RawKeyEventDataAndroid) {
       RawKeyDownEvent rawKeyDownEvent = event;
       RawKeyEventDataAndroid rawKeyEventDataAndroid = rawKeyDownEvent.data;
-      print(rawKeyEventDataAndroid.keyCode);
-      if (rawKeyEventDataAndroid.keyCode == 139 || rawKeyEventDataAndroid.keyCode == 280) {
+      if (rawKeyEventDataAndroid.keyCode == 134 || rawKeyEventDataAndroid.keyCode == 280) {
         readRFID();
       }
     }
@@ -117,9 +115,7 @@ class _MyAppState extends State<MyApp> {
               ),
               body: new RawKeyboardListener(
                 focusNode: _focusNode,
-                onKey: (RawKeyEvent event){
-                  print("come to key event");
-                },
+                onKey: _handleKeydown,
                 child: Column(
                 children: <Widget>[
                   Center(

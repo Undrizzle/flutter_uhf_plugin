@@ -58,17 +58,17 @@ public class MainActivity extends FlutterActivity {
           Map<String, Object> message = new HashMap<>();
           message.put("type", "keydown");
           message.put("keymap", "android");
-          message.put("flags", 111);
-          message.put("plainCodePoint", 111);
-          message.put("codePoint", 111);
-          message.put("keyCode", 134);
-          message.put("scanCode", 111);
-          message.put("metaState", 111);
-          message.put("source", 111);
-          message.put("vendorId", 111);
-          message.put("productId", 111);
-          message.put("deviceId", 111);
-          message.put("repeatCount", 111);
+          message.put("flags", 8);
+          message.put("plainCodePoint", 0);
+          message.put("codePoint", 0);
+          message.put("keyCode", keyCode);
+          message.put("scanCode", 186);
+          message.put("metaState", 0);
+          message.put("source", 257);
+          message.put("vendorId", 1);
+          message.put("productId", 1);
+          message.put("deviceId", 1);
+          message.put("repeatCount", 0);
           if (messageChannel != null) {
             messageChannel.send(message);
           }
